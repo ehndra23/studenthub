@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StudentHub - Asisten Kuliah Mahasiswa</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Supabase JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
+
+  <!-- TOP HEADER -->
+  <header class="bg-slate-800/80 backdrop-blur border-b border-slate-700 sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div
+          class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-white text-xl shadow-lg shadow-indigo-500/30">
+          <i class="ph-bold ph-student"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-white leading-tight">StudentHub</h1>
+          <p class="text-xs text-slate-400">Asisten Akademik & Catatan Kuliah</p>
+        </div>
+      </div>
+
+      <!-- KREDENSIAL SUPABASE CONFIG -->
+      <div class="flex items-center gap-2 bg-slate-900/60 p-2 rounded-lg border border-slate-700 text-xs">
+        <input id="cfgUrl" type="text" placeholder="Supabase URL"
+          class="bg-slate-800 px-2 py-1 rounded text-slate-200 border border-slate-600 focus:outline-none w-36" />
+        <input id="cfgKey" type="password" placeholder="Supabase Anon Key"
+          class="bg-slate-800 px-2 py-1 rounded text-slate-200 border border-slate-600 focus:outline-none w-36" />
+        <button onclick="saveSupabaseConfig()"
+          class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded font-medium transition">Connect</button>
+      </div>
+    </div>
+
+    <!-- NAV TABS -->
+    <nav class="max-w-6xl mx-auto px-4 flex gap-2 border-t border-slate-700/50 pt-2 overflow-x-auto text-sm">
+      <button onclick="switchTab('dashboard')" id="tab-dashboard"
+        class="tab-btn px-4 py-2 rounded-t-lg font-medium text-slate-400 hover:text-white transition flex items-center gap-2 border-b-2 border-transparent">
+        <i class="ph ph-squares-four text-lg"></i> Dashboard
+      </button>
+      <button onclick="switchTab('jadwal')" id="tab-jadwal"
+        class="tab-btn px-4 py-2 rounded-t-lg font-medium text-slate-400 hover:text-white transition flex items-center gap-2 border-b-2 border-transparent">
+        <i class="ph ph-calendar text-lg"></i> Jadwal & Presensi
+      </button>
+      <button onclick="switchTab('tugas')" id="tab-tugas"
+        class="tab-btn px-4 py-2 rounded-t-lg font-medium text-slate-400 hover:text-white transition flex items-center gap-2 border-b-2 border-transparent">
+        <i class="ph ph-check-square-offset text-lg"></i> Tugas (Kanban)
+      </button>
+      <button onclick="switchTab('catatan')" id="tab-catatan"
+        class="tab-btn px-4 py-2 rounded-t-lg font-medium text-slate-400 hover:text-white transition flex items-center gap-2 border-b-2 border-transparent">
+        <i class="ph ph-notebook text-lg"></i> Catatan & Foto
+      </button>
+    </nav>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-6xl mx-auto px-4 py-6 flex-1 w-full">
+
+    <!-- STATUS NOTIFIKASI -->
+    <div id="statusAlert" class="hidden mb-4 p-3 rounded-xl border text-sm flex items-center justify-between">
+      <span id="statusMsg"></span>
+      <button onclick="closeAlert()" class="text-slate-400 hover:text-white"><i class="ph ph-x"></i></button>
+    </div>
+
+    <!-- 1. DASHBOARD TAB -->
+    <section id="sec-dashboard" class="space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Hari Ini Card -->
+        <div class="bg-slate-800 border border-slate-700 p-5 rounded-2xl">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Kuliah Hari Ini</span>
+            <i class="ph ph-clock text-indigo-400 text-xl"></i>
+          </div>
+          <div id="dashTodaySchedule" class="text-sm space-y-2 text-slate-300">
+            <p class="text-slate-500 italic">Hubungkan Supabase untuk memuat data...</p>
+          </div>
+        </div>
+
+        <!-- Urgent Deadline Card -->
+        <div class="bg-slate-800 border border-slate-700 p-5 rounded-2xl">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Deadline Mendatang</span>
+            <i class="ph ph-warning-circle text-amber-400 text-xl"></i>
+          </div>
+          <div id="dashUrgentTasks" class="text-sm space-y-2 text-slate-300">
+            <p class="text-slate-500 italic">Tidak ada tugas mendesak.</p>
+          </div>
+        </div>
+
+        <!-- Presensi Warning Card -->
+        <div class="bg-slate-800 border border-slate-700 p-5 rounded-2xl">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Status Absensi</span>
+            <i class="ph ph-user-check text-emerald-400 text-xl"></i>
+          </div>
+          <div id="dashAttendanceStats" class="text-sm space-y-2 text-slate-300">
+            <p class="text-slate-500 italic">Belum ada catatan presensi.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. JADWAL & PRESENSI TAB -->
+    <section id="sec-jadwal" class="hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Form Tambah Jadwal -->
+        <div class="bg-slate-800 border border-slate-700 p-5 rounded-2xl h-fit">
+          <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2">
+            <i class="ph ph-plus-circle text-indigo-400"></i> Tambah Matakuliah
+          </h3>
+          <form onsubmit="handleAddJadwal(event)" class="space-y-3 text-sm">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Nama Mata Kuliah</label>
+              <input type="text" id="jMatkul" required placeholder="Contoh: Pemrograman Web"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:border-indigo-500 focus:outline-none">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">Hari</label>
+                <select id="jHari"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:border-indigo-500 focus:outline-none">
+                  <option value="Senin">Senin</option>
+                  <option value="Selasa">Selasa</option>
+                  <option value="Rabu">Rabu</option>
+                  <option value="Kamis">Kamis</option>
+                  <option value="Jumat">Jumat</option>
+                  <option value="Sabtu">Sabtu</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">Jam</label>
+                <input type="text" id="jJam" required placeholder="08.00 - 10.30"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:border-indigo-500 focus:outline-none">
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Ruangan / Link</label>
+              <input type="text" id="jRuang" placeholder="Lab Komputer 2 / Zoom"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:border-indigo-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Dosen Pengampu</label>
+              <input type="text" id="jDosen" placeholder="Dr. Budi Santoso"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:border-indigo-500 focus:outline-none">
+            </div>
+            <button type="submit"
+              class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium p-2.5 rounded-lg transition mt-2">Simpan
+              Jadwal</button>
+          </form>
+        </div>
+
+        <!-- Daftar Jadwal & Presensi -->
+        <div class="lg:col-span-2 space-y-4">
+          <h3 class="text-base font-bold text-white flex items-center justify-between">
+            <span>Daftar Matakuliah & Kehadiran</span>
+            <span id="scheduleCount"
+              class="text-xs bg-slate-800 text-slate-400 px-2.5 py-1 rounded-full border border-slate-700">0
+              Matkul</span>
+          </h3>
+          <div id="listJadwal" class="space-y-3">
+            <!-- Dynamic Render -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. TRACKER TUGAS (KANBAN) TAB -->
+    <section id="sec-tugas" class="hidden space-y-6">
+      <!-- Form Input Tugas -->
+      <div class="bg-slate-800 border border-slate-700 p-5 rounded-2xl">
+        <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2">
+          <i class="ph ph-plus-circle text-indigo-400"></i> Buat Tugas Baru
+        </h3>
+        <form onsubmit="handleAddTugas(event)" class="grid grid-cols-1 md:grid-cols-5 gap-3 text-sm">
+          <input type="text" id="tJudul" required placeholder="Judul Tugas/Project"
+            class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:border-indigo-500 focus:outline-none md:col-span-2">
+          <input type="text" id="tMatkul" required placeholder="Mata Kuliah"
+            class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:border-indigo-500 focus:outline-none">
+          <input type="date" id="tDeadline" required
+            class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:border-indigo-500 focus:outline-none">
+          <button type="submit"
+            class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium p-2.5 rounded-lg transition">Tambah</button>
+        </form>
+      </div>
+
+      <!-- KANBAN BOARD -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Column Belum -->
+        <div class="bg-slate-800/50 border border-slate-700/80 p-4 rounded-2xl min-h-[300px]">
+          <div class="flex items-center justify-between mb-3 border-b border-slate-700/80 pb-2">
+            <span class="font-bold text-sm text-slate-300 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Belum Dikerjakan
+            </span>
+            <span id="countBelum" class="text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded">0</span>
+          </div>
+          <div id="colBelum" class="space-y-3"></div>
+        </div>
+
+        <!-- Column Proses -->
+        <div class="bg-slate-800/50 border border-slate-700/80 p-4 rounded-2xl min-h-[300px]">
+          <div class="flex items-center justify-between mb-3 border-b border-slate-700/80 pb-2">
+            <span class="font-bold text-sm text-slate-300 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Sedang Diproses
+            </span>
+            <span id="countProses" class="text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded">0</span>
+          </div>
+          <div id="colProses" class="space-y-3"></div>
+        </div>
+
+        <!-- Column Selesai -->
+        <div class="bg-slate-800/50 border border-slate-700/80 p-4 rounded-2xl min-h-[300px]">
+          <div class="flex items-center justify-between mb-3 border-b border-slate-700/80 pb-2">
+            <span class="font-bold text-sm text-slate-300 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Selesai
+            </span>
+            <span id="countSelesai" class="text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded">0</span>
+          </div>
+          <div id="colSelesai" class="space-y-3"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. CATATAN & FOTO TAB -->
+    <section id="sec-catatan" class="hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Form Catatan + Upload Foto -->
+        <div class="bg-slate-800 border border-slate-700 p-5 rounded-2xl h-fit">
+          <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2">
+            <i class="ph ph-note-pencil text-indigo-400"></i> Simpan Catatan & Foto
+          </h3>
+          <form onsubmit="handleAddCatatan(event)" class="space-y-3 text-sm">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Mata Kuliah</label>
+              <input type="text" id="cMatkul" required placeholder="Contoh: Basdat"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:border-indigo-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Judul Catatan / Materi</label>
+              <input type="text" id="cJudul" required placeholder="Pertemuan 4 - Normalisasi DB"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:border-indigo-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Isi Rangkuman Teks</label>
+              <textarea id="cIsi" rows="3" placeholder="Poin penting penjelasan dosen..."
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:border-indigo-500 focus:outline-none"></textarea>
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Upload Foto Catatan/Papan Tulis</label>
+              <input type="file" id="cFoto" accept="image/*"
+                class="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500">
+            </div>
+            <button type="submit" id="btnSaveCatatan"
+              class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium p-2.5 rounded-lg transition mt-2 flex items-center justify-center gap-2">
+              <span>Simpan Catatan</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Galeri Catatan -->
+        <div class="lg:col-span-2 space-y-4">
+          <h3 class="text-base font-bold text-white">Repositori Catatan</h3>
+          <div id="gridCatatan" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Dynamic Render -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <!-- JAVASCRIPT LOGIC FULL (SUDAH TERHUBUNG OTOMATIS) -->
+  <script>
+    // 1. KREDENSIAL SUPABASE LANGSUNG
+    const SUPABASE_URL = 'https://sqdfyjtjptaqyfhceuwf.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_kzQonSplZiJkwwQ19fWRxw_xZOVmfDC';
+
+    let supabaseClient = null;
+
+    // 2. INISIALISASI OTOMATIS SAAT WEB DIBUKA
+    document.addEventListener('DOMContentLoaded', () => {
+      try {
+        if (typeof supabase !== 'undefined') {
+          supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+          console.log('Supabase terhubung otomatis!');
+          loadAllData();
+        } else {
+          showAlert('Gagal memuat pustaka Supabase CDN. Periksa koneksi internet.', 'error');
+        }
+      } catch (err) {
+        showAlert('Gagal mengoneksikan Supabase: ' + err.message, 'error');
+      }
+
+      // Isi input di header jika ada
+      const inputUrl = document.getElementById('cfgUrl');
+      const inputKey = document.getElementById('cfgKey');
+      if (inputUrl) inputUrl.value = SUPABASE_URL;
+      if (inputKey) inputKey.value = SUPABASE_KEY;
+
+      switchTab('dashboard');
+    });
+
+    // 3. SIMPAN/UPDATE KREDENSIAL MANUAL
+    function saveSupabaseConfig() {
+      const url = document.getElementById('cfgUrl').value.trim();
+      const key = document.getElementById('cfgKey').value.trim();
+
+      if (!url || !key) return showAlert('URL dan Key tidak boleh kosong!', 'error');
+
+      localStorage.setItem('studenthub_sb_url', url);
+      localStorage.setItem('studenthub_sb_key', key);
+
+      try {
+        supabaseClient = supabase.createClient(url, key);
+        loadAllData();
+        showAlert('Koneksi Supabase berhasil diperbarui!', 'success');
+      } catch (e) {
+        showAlert('Gagal mengoneksikan: ' + e.message, 'error');
+      }
+    }
+
+    // 4. LOAD SEMUA DATA
+    function loadAllData() {
+      if (!supabaseClient) return;
+      fetchJadwal();
+      fetchTugas();
+      fetchCatatan();
+    }
+
+    // 5. NAVIGASI TAB
+    function switchTab(tabName) {
+      ['dashboard', 'jadwal', 'tugas', 'catatan'].forEach(t => {
+        const sec = document.getElementById(`sec-${t}`);
+        if (sec) sec.classList.add('hidden');
+        const btn = document.getElementById(`tab-${t}`);
+        if (btn) {
+          btn.classList.remove('border-indigo-500', 'text-indigo-400');
+          btn.classList.add('border-transparent', 'text-slate-400');
+        }
+      });
+
+      const targetSec = document.getElementById(`sec-${tabName}`);
+      if (targetSec) targetSec.classList.remove('hidden');
+
+      const activeBtn = document.getElementById(`tab-${tabName}`);
+      if (activeBtn) {
+        activeBtn.classList.remove('border-transparent', 'text-slate-400');
+        activeBtn.classList.add('border-indigo-500', 'text-indigo-400');
+      }
+    }
+
+    // 6. NOTIFIKASI ALERT
+    function showAlert(msg, type = 'info') {
+      const box = document.getElementById('statusAlert');
+      const text = document.getElementById('statusMsg');
+      if (!box || !text) return;
+
+      box.classList.remove('hidden', 'bg-emerald-950/80', 'border-emerald-700', 'text-emerald-200', 'bg-rose-950/80', 'border-rose-700', 'text-rose-200', 'bg-slate-800', 'border-slate-700', 'text-slate-200');
+
+      if (type === 'success') {
+        box.classList.add('bg-emerald-950/80', 'border-emerald-700', 'text-emerald-200');
+      } else if (type === 'error') {
+        box.classList.add('bg-rose-950/80', 'border-rose-700', 'text-rose-200');
+      } else {
+        box.classList.add('bg-slate-800', 'border-slate-700', 'text-slate-200');
+      }
+
+      text.innerText = msg;
+    }
+
+    function closeAlert() {
+      const box = document.getElementById('statusAlert');
+      if (box) box.classList.add('hidden');
+    }
+
+    // --- 7. LOGIKA JADWAL & PRESENSI ---
+    async function fetchJadwal() {
+      if (!supabaseClient) return;
+      const {data: jadwalData, error: err1} = await supabaseClient.from('jadwal').select('*').order('id', {ascending: true});
+      const {data: presensiData, error: err2} = await supabaseClient.from('presensi').select('*');
+
+      if (err1) {showAlert('Error fetching jadwal: ' + err1.message, 'error'); return;}
+
+      renderJadwalAndPresensi(jadwalData || [], presensiData || []);
+      renderDashboardSchedule(jadwalData || []);
+      renderDashboardPresensi(presensiData || []);
+    }
+
+    async function handleAddJadwal(e) {
+      e.preventDefault();
+      if (!supabaseClient) return showAlert('Sambungkan Supabase dulu!', 'error');
+
+      const nama_matkul = document.getElementById('jMatkul').value.trim();
+      const hari = document.getElementById('jHari').value;
+      const jam = document.getElementById('jJam').value.trim();
+      const ruangan = document.getElementById('jRuang').value.trim();
+      const dosen = document.getElementById('jDosen').value.trim();
+
+      const {error: errJadwal} = await supabaseClient.from('jadwal').insert([{nama_matkul, hari, jam, ruangan, dosen}]);
+      if (errJadwal) return showAlert(errJadwal.message, 'error');
+
+      await supabaseClient.from('presensi').insert([{nama_matkul, jumlah_hadir: 0, jumlah_alpa: 0, maks_alpa: 4}]);
+
+      e.target.reset();
+      showAlert('Jadwal berhasil ditambahkan!', 'success');
+      fetchJadwal();
+    }
+
+    async function updatePresensi(id, field, delta) {
+      if (!supabaseClient) return;
+      const {data} = await supabaseClient.from('presensi').select('*').eq('id', id).single();
+      if (!data) return;
+
+      const newVal = Math.max(0, (data[field] || 0) + delta);
+      await supabaseClient.from('presensi').update({[field]: newVal}).eq('id', id);
+      fetchJadwal();
+    }
+
+    function renderJadwalAndPresensi(jadwalList, presensiList) {
+      const container = document.getElementById('listJadwal');
+      const countEl = document.getElementById('scheduleCount');
+      if (countEl) countEl.innerText = `${jadwalList.length} Matkul`;
+
+      if (!container) return;
+
+      if (jadwalList.length === 0) {
+        container.innerHTML = `<p class="text-slate-500 text-sm italic">Belum ada jadwal kuliah yang dimasukkan.</p>`;
+        return;
+      }
+
+      container.innerHTML = jadwalList.map(j => {
+        const pres = presensiList.find(p => p.nama_matkul.toLowerCase() === j.nama_matkul.toLowerCase()) || {jumlah_hadir: 0, jumlah_alpa: 0, maks_alpa: 4, id: null};
+        const isWarning = pres.jumlah_alpa >= pres.maks_alpa - 1;
+
+        return `
+        <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="bg-indigo-900/60 text-indigo-300 text-xs px-2 py-0.5 rounded font-bold">${j.hari}</span>
+              <span class="text-xs text-slate-400"><i class="ph ph-clock"></i> ${j.jam}</span>
+            </div>
+            <h4 class="font-bold text-white text-base">${j.nama_matkul}</h4>
+            <p class="text-xs text-slate-400">Ruang: <span class="text-slate-200">${j.ruangan || '-'}</span> | Dosen: <span class="text-slate-200">${j.dosen || '-'}</span></p>
+          </div>
+
+          <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-700/60 flex items-center justify-between md:justify-end gap-4 text-xs">
+            <div>
+              <span class="text-slate-400 block">Hadir: <strong class="text-emerald-400">${pres.jumlah_hadir}</strong> kali</span>
+              <span class="text-slate-400 block">Alpa: <strong class="${isWarning ? 'text-rose-400 font-bold' : 'text-slate-200'}">${pres.jumlah_alpa}/${pres.maks_alpa}</strong> kali</span>
+            </div>
+            ${pres.id ? `
+            <div class="flex items-center gap-1">
+              <button onclick="updatePresensi(${pres.id}, 'jumlah_hadir', 1)" class="bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/30 px-2 py-1 rounded">+ Hadir</button>
+              <button onclick="updatePresensi(${pres.id}, 'jumlah_alpa', 1)" class="bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/30 px-2 py-1 rounded">+ Alpa</button>
+            </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+      }).join('');
+    }
+
+    // --- 8. LOGIKA TUGAS (KANBAN) ---
+    async function fetchTugas() {
+      if (!supabaseClient) return;
+      const {data, error} = await supabaseClient.from('tugas').select('*').order('deadline', {ascending: true});
+      if (error) return showAlert('Error fetching tugas: ' + error.message, 'error');
+
+      renderKanban(data || []);
+      renderDashboardTasks(data || []);
+    }
+
+    async function handleAddTugas(e) {
+      e.preventDefault();
+      if (!supabaseClient) return showAlert('Sambungkan Supabase dulu!', 'error');
+
+      const judul_tugas = document.getElementById('tJudul').value.trim();
+      const nama_matkul = document.getElementById('tMatkul').value.trim();
+      const deadline = document.getElementById('tDeadline').value;
+
+      const {error} = await supabaseClient.from('tugas').insert([{judul_tugas, nama_matkul, deadline, status: 'Belum'}]);
+      if (error) return showAlert(error.message, 'error');
+
+      e.target.reset();
+      showAlert('Tugas baru ditambahkan!', 'success');
+      fetchTugas();
+    }
+
+    async function moveTaskStatus(id, newStatus) {
+      if (!supabaseClient) return;
+      await supabaseClient.from('tugas').update({status: newStatus}).eq('id', id);
+      fetchTugas();
+    }
+
+    async function deleteTask(id) {
+      if (!supabaseClient) return;
+      if (!confirm('Hapus tugas ini?')) return;
+      await supabaseClient.from('tugas').delete().eq('id', id);
+      fetchTugas();
+    }
+
+    function renderKanban(tasks) {
+      const colBelum = document.getElementById('colBelum');
+      const colProses = document.getElementById('colProses');
+      const colSelesai = document.getElementById('colSelesai');
+
+      if (!colBelum || !colProses || !colSelesai) return;
+
+      const belum = tasks.filter(t => t.status === 'Belum');
+      const proses = tasks.filter(t => t.status === 'Proses');
+      const selesai = tasks.filter(t => t.status === 'Selesai');
+
+      const countBelum = document.getElementById('countBelum');
+      const countProses = document.getElementById('countProses');
+      const countSelesai = document.getElementById('countSelesai');
+
+      if (countBelum) countBelum.innerText = belum.length;
+      if (countProses) countProses.innerText = proses.length;
+      if (countSelesai) countSelesai.innerText = selesai.length;
+
+      const renderCard = (t) => `
+      <div class="bg-slate-800 border border-slate-700 p-3.5 rounded-xl space-y-2 text-xs shadow-sm">
+        <div class="flex items-center justify-between text-slate-400">
+          <span class="font-semibold text-indigo-400">${t.nama_matkul}</span>
+          <button onclick="deleteTask(${t.id})" class="text-slate-500 hover:text-rose-400"><i class="ph ph-trash"></i></button>
+        </div>
+        <h5 class="font-bold text-slate-100 text-sm">${t.judul_tugas}</h5>
+        <div class="flex items-center justify-between text-slate-400 pt-1">
+          <span><i class="ph ph-calendar"></i> ${t.deadline}</span>
+          <div class="flex gap-1">
+            ${t.status !== 'Belum' ? `<button onclick="moveTaskStatus(${t.id}, 'Belum')" class="bg-slate-700 hover:bg-slate-600 px-1.5 py-0.5 rounded text-[10px]">◀</button>` : ''}
+            ${t.status !== 'Proses' ? `<button onclick="moveTaskStatus(${t.id}, 'Proses')" class="bg-slate-700 hover:bg-slate-600 px-1.5 py-0.5 rounded text-[10px]">Proses</button>` : ''}
+            ${t.status !== 'Selesai' ? `<button onclick="moveTaskStatus(${t.id}, 'Selesai')" class="bg-emerald-600/30 text-emerald-300 hover:bg-emerald-600/50 px-1.5 py-0.5 rounded text-[10px]">▶</button>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+
+      colBelum.innerHTML = belum.length ? belum.map(renderCard).join('') : '<p class="text-xs text-slate-500 italic py-2 text-center">Kosong</p>';
+      colProses.innerHTML = proses.length ? proses.map(renderCard).join('') : '<p class="text-xs text-slate-500 italic py-2 text-center">Kosong</p>';
+      colSelesai.innerHTML = selesai.length ? selesai.map(renderCard).join('') : '<p class="text-xs text-slate-500 italic py-2 text-center">Kosong</p>';
+    }
+
+    // --- 9. LOGIKA CATATAN & FOTO (TERMASUK HAPUS FOTO FROM STORAGE) ---
+    async function fetchCatatan() {
+      if (!supabaseClient) return;
+      const {data, error} = await supabaseClient.from('catatan').select('*').order('id', {ascending: false});
+      if (error) return showAlert('Error fetching catatan: ' + error.message, 'error');
+
+      renderCatatan(data || []);
+    }
+
+    async function handleAddCatatan(e) {
+      e.preventDefault();
+      if (!supabaseClient) return showAlert('Sambungkan Supabase dulu!', 'error');
+
+      const nama_matkul = document.getElementById('cMatkul').value.trim();
+      const judul_catatan = document.getElementById('cJudul').value.trim();
+      const isi_teks = document.getElementById('cIsi').value.trim();
+      const fotoFile = document.getElementById('cFoto').files[0];
+
+      let foto_url = null;
+
+      if (fotoFile) {
+        const fileExt = fotoFile.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+
+        showAlert('Mengunggah foto ke Supabase Storage...', 'info');
+
+        const {error: uploadErr} = await supabaseClient.storage.from('foto-catatan').upload(fileName, fotoFile);
+        if (uploadErr) return showAlert('Upload foto gagal: ' + uploadErr.message, 'error');
+
+        const {data: publicUrlData} = supabaseClient.storage.from('foto-catatan').getPublicUrl(fileName);
+        foto_url = publicUrlData.publicUrl;
+      }
+
+      const {error} = await supabaseClient.from('catatan').insert([{nama_matkul, judul_catatan, isi_teks, foto_url}]);
+      if (error) return showAlert(error.message, 'error');
+
+      e.target.reset();
+      showAlert('Catatan & Foto berhasil disimpan!', 'success');
+      fetchCatatan();
+    }
+
+    async function deleteCatatan(id, fotoUrl) {
+      if (!supabaseClient) return;
+      if (!confirm('Yakin ingin menghapus catatan ini beserta fotonya?')) return;
+
+      if (fotoUrl) {
+        const fileName = fotoUrl.split('/').pop();
+        const {error: storageErr} = await supabaseClient
+          .storage
+          .from('foto-catatan')
+          .remove([fileName]);
+
+        if (storageErr) {
+          console.error('Gagal menghapus foto dari Storage:', storageErr.message);
+        }
+      }
+
+      const {error: dbErr} = await supabaseClient
+        .from('catatan')
+        .delete()
+        .eq('id', id);
+
+      if (dbErr) return showAlert('Gagal menghapus catatan: ' + dbErr.message, 'error');
+
+      showAlert('Catatan & foto berhasil dihapus!', 'success');
+      fetchCatatan();
+    }
+
+    function renderCatatan(list) {
+      const container = document.getElementById('gridCatatan');
+      if (!container) return;
+
+      if (list.length === 0) {
+        container.innerHTML = `<p class="text-slate-500 text-sm italic lg:col-span-2">Belum ada catatan tersimpan.</p>`;
+        return;
+      }
+
+      container.innerHTML = list.map(c => `
+      <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden flex flex-col justify-between relative group">
+        <div>
+          ${c.foto_url ? `
+            <a href="${c.foto_url}" target="_blank">
+              <img src="${c.foto_url}" alt="Foto Catatan" class="w-full h-44 object-cover border-b border-slate-700 hover:opacity-90 transition">
+            </a>
+          ` : ''}
+          <div class="p-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-bold uppercase tracking-wider bg-indigo-900/50 text-indigo-300 px-2 py-0.5 rounded">${c.nama_matkul}</span>
+              
+              <!-- Tombol Hapus Catatan -->
+              <button onclick="deleteCatatan(${c.id}, '${c.foto_url || ''}')" class="text-slate-400 hover:text-rose-400 p-1 transition" title="Hapus Catatan">
+                <i class="ph ph-trash text-base"></i>
+              </button>
+            </div>
+            <h4 class="font-bold text-white text-base">${c.judul_catatan}</h4>
+            ${c.isi_teks ? `<p class="text-xs text-slate-300 line-clamp-3">${c.isi_teks}</p>` : ''}
+          </div>
+        </div>
+        <div class="p-4 pt-0 text-[10px] text-slate-500 flex justify-between items-center">
+          <span>${new Date(c.created_at).toLocaleDateString('id-ID')}</span>
+          ${c.foto_url ? `<a href="${c.foto_url}" target="_blank" class="text-indigo-400 hover:underline">Lihat Foto Lengkap ↗</a>` : ''}
+        </div>
+      </div>
+    `).join('');
+    }
+
+    // --- 10. RENDERER DASHBOARD ---
+    function renderDashboardSchedule(jadwal) {
+      const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+      const today = days[new Date().getDay()];
+      const todayList = jadwal.filter(j => j.hari.toLowerCase() === today.toLowerCase());
+
+      const container = document.getElementById('dashTodaySchedule');
+      if (!container) return;
+
+      if (todayList.length === 0) {
+        container.innerHTML = `<p class="text-slate-500 italic">Tidak ada jadwal perkuliahan hari ${today}.</p>`;
+        return;
+      }
+
+      container.innerHTML = todayList.map(j => `
+      <div class="p-2.5 bg-slate-900/60 rounded-lg border border-slate-700/50">
+        <p class="font-bold text-white">${j.nama_matkul}</p>
+        <p class="text-xs text-slate-400">${j.jam} • ${j.ruangan || 'TBA'}</p>
+      </div>
+    `).join('');
+    }
+
+    function renderDashboardTasks(tasks) {
+      const urgent = tasks.filter(t => t.status !== 'Selesai').slice(0, 3);
+      const container = document.getElementById('dashUrgentTasks');
+      if (!container) return;
+
+      if (urgent.length === 0) {
+        container.innerHTML = `<p class="text-slate-500 italic">Semua tugas selesai!</p>`;
+        return;
+      }
+
+      container.innerHTML = urgent.map(t => `
+      <div class="p-2.5 bg-slate-900/60 rounded-lg border border-slate-700/50 flex justify-between items-center">
+        <div>
+          <p class="font-medium text-white">${t.judul_tugas}</p>
+          <p class="text-xs text-slate-400">${t.nama_matkul}</p>
+        </div>
+        <span class="text-xs text-rose-400 font-semibold">${t.deadline}</span>
+      </div>
+    `).join('');
+    }
+
+    function renderDashboardPresensi(presensi) {
+      const container = document.getElementById('dashAttendanceStats');
+      if (!container) return;
+
+      if (presensi.length === 0) {
+        container.innerHTML = `<p class="text-slate-500 italic">Belum ada data presensi.</p>`;
+        return;
+      }
+
+      container.innerHTML = presensi.map(p => `
+      <div class="flex justify-between items-center py-1 border-b border-slate-700/40 text-xs">
+        <span class="text-slate-300">${p.nama_matkul}</span>
+        <span class="${p.jumlah_alpa >= p.maks_alpa - 1 ? 'text-rose-400 font-bold' : 'text-slate-400'}">
+          Alpa: ${p.jumlah_alpa}/${p.maks_alpa}
+        </span>
+      </div>
+    `).join('');
+    }
+  </script>
+</body>
+
+</html>
